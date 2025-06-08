@@ -8,8 +8,12 @@ export default function LoginScreen({ navigation }) {
   return (
     <ImageBackground
       source={require('../assets/images/hojasFondo.png')}
-      style={styles.background}
-      imageStyle={styles.imageStyle}
+      style={styles.backgroundImage}
+      resizeMode="cover"
+      imageStyle={{
+        opacity: 0.3, // Reduce la intensidad del fondo
+        transform: [{ scaleX: -1 }], // Invierte horizontalmente
+      }}
     >
       <View style={styles.container}>
         <Image source={require('../assets/images/logoTika.png')} style={styles.logo} />
