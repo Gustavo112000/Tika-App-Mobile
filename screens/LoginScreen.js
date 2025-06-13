@@ -1,9 +1,14 @@
 import React, { useState } from 'react';
-import { View, TextInput, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import {
+  View, Text, TextInput, StyleSheet, TouchableOpacity,
+  Image, ImageBackground
+} from 'react-native';
+import Icon from 'react-native-vector-icons/FontAwesome';
 
 export default function LoginScreen({ navigation }) {
-  const [user, setUser] = useState('');
+  const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   return (
     <ImageBackground
@@ -11,31 +16,47 @@ export default function LoginScreen({ navigation }) {
       style={styles.backgroundImage}
       resizeMode="cover"
       imageStyle={{
-        opacity: 0.3, // Reduce la intensidad del fondo
-        transform: [{ scaleX: -1 }], // Invierte horizontalmente
+        opacity: 0.3,
+        transform: [{ scaleX: -1 }],
       }}
     >
       <View style={styles.container}>
         <Image source={require('../assets/images/logoTika.png')} style={styles.logo} />
         <Text style={styles.title}>Iniciar sesión</Text>
 
-        <TextInput style={styles.input} placeholder="Usuario" value={user} onChangeText={setUser} />
-        <TextInput style={styles.input} placeholder="Contraseña" value={pass} onChangeText={setPass} secureTextEntry />
+        <View style={styles.inputContainer}>
+          <Icon name="user" size={20} color="#14AE5C" style={styles.icon} />
+          <TextInput
+            style={styles.input}
+            placeholder="Correo electrónico"
+            placeholderTextColor="#14AE5C"
+            value={email}
+            onChangeText={setEmail}
+          />
+        </View>
 
-        <TouchableOpacity>
-          <Text style={styles.link}>¿Olvidaste la contraseña?</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-          <Text style={styles.link}>¿No tienes cuenta?</Text>
-        </TouchableOpacity>
-  
-        <TouchableOpacity style={styles.buttonOutline} onPress={() => navigation.navigate('RegisterScreen')}>
-          <Text style={styles.buttonTextOutline}>Registrarse</Text>
-        </TouchableOpacity>
+        <View style={styles.inputContainer}>
+          <Icon name="lock" size={20} color="#14AE5C" style={styles.icon} />
+          <TextInput
+            style={styles.input}
+            placeholder="Contraseña"
+            placeholderTextColor="#14AE5C"
+            secureTextEntry={!showPassword}
+            value={pass}
+            onChangeText={setPass}
+          />
+          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+            <Icon name={showPassword ? 'eye' : 'eye-slash'} size={20} color="#14AE5C" />
+          </TouchableOpacity>
+        </View>
 
         <TouchableOpacity style={styles.button}>
           <Text style={styles.buttonText}>Iniciar sesión</Text>
+        </TouchableOpacity>
+
+        <Text style={styles.textCenter}>¿No tienes cuenta?</Text>
+        <TouchableOpacity style={styles.buttonOutline} onPress={() => navigation.navigate('RegisterScreen')}>
+          <Text style={styles.buttonTextOutline}>Registrarse</Text>
         </TouchableOpacity>
       </View>
     </ImageBackground>
@@ -43,52 +64,61 @@ export default function LoginScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  backgroundImage: { 
-    flex: 1, 
-    resizeMode: 'cover', 
-    justifyContent: 'flex-start', 
-    position: 'absolute', 
-    top: 0, 
-    right: 0, 
-    left: 0, 
-    height: '75%' 
+  backgroundImage: {
+    flex: 1,
+    resizeMode: 'cover',
+    justifyContent: 'flex-start',
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    left: 0,
+    height: '75%',
   },
-  container: { 
-    flex: 1, 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    backgroundColor: 'rgba(0, 0, 0, 0.3)', 
-    paddingHorizontal: 20 
+  container: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: '30%',
   },
   logo: {
-    width: 100, 
-    height: 100, 
-    marginBottom: 20, 
-    alignSelf: 'center',
+    width: 220,
+    height: 220,
+    marginBottom: 10,
   },
-  title: { 
-    fontSize: 24, 
-    fontWeight: 'bold' 
+  title: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    color: '#02433B',
+    marginBottom: 30,
   },
-  subtitle: { 
-    fontSize: 16, 
-    color: '#888', 
-    marginBottom: 30 
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 30,
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    marginVertical: 5,
+    width: '80%',
   },
-  button: { 
-    backgroundColor: '#43B97F', 
-    padding: 15, 
-    borderRadius: 30, 
-    width: '80%', 
-    alignItems: 'center' 
+  icon: {
+    marginRight: 10,
   },
-  buttonText: { 
-    color: '#fff', 
-    fontSize: 16 
+  input: {
+    flex: 1,
+    color: '#02433B',
   },
-  link: { 
-    marginTop: 15, 
-    color: '#43B97F' 
+  button: {
+    backgroundColor: '#14AE5C',
+    paddingVertical: 10,
+    paddingHorizontal: 125,
+    borderRadius: 20,
+    marginTop: 15,
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: 'bold',
   },
   buttonOutline: {
     borderWidth: 2,
@@ -96,23 +126,17 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 125,
     borderRadius: 20,
-    marginVertical: 3,
+    marginVertical: 10,
   },
-  buttonTextOutline: { 
-    color: '#14AE5C', 
-    fontSize: 15, 
-    fontWeight: 'bold' 
+  buttonTextOutline: {
+    color: '#14AE5C',
+    fontSize: 15,
+    fontWeight: 'bold',
   },
-  secondaryButton: { 
-    marginTop: 15, 
-    borderColor: '#43B97F',
-    borderWidth: 1, 
-    padding: 10, 
-    borderRadius: 30, 
-    width: '80%', 
-    alignItems: 'center' 
-  },
-  secondaryText: { 
-    color: '#43B97F' 
+  textCenter: {
+    color: '#14AE5C',
+    fontSize: 15,
+    marginVertical: 10,
+    textAlign: 'center',
   },
 });
