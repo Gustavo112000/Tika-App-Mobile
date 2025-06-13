@@ -32,9 +32,16 @@ export default function RegisterScreen() {
         <TextInput style={styles.input} placeholder="Correo electrónico" value={email} onChangeText={setEmail} />
 
 	<TouchableOpacity 
-	style={styles.button}
-	onPress={() => registrarUsuario(user, confirm, email)}
-    >
+	    style={styles.button}
+	    onPress={async () => {
+		try {
+		    await registrarUsuario(user, confirm, email);
+		    Alert.alert('Registro exitoso');
+		} catch (error) {
+		    Alert.alert('Error', error.message);
+		}
+	    }}
+	>
           <Text style={styles.buttonText}>Registrarse</Text>
         </TouchableOpacity>
       </View>

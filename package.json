@@ -15,7 +15,8 @@
     "firebase": "^11.9.1",
     "react": "19.0.0",
     "react-native": "0.79.2",
-    "react-native-gesture-handler": "^2.26.0"
+    "react-native-gesture-handler": "^2.26.0",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"
