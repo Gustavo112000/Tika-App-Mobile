@@ -21,15 +21,13 @@ const AñadirEspacioModal = ({ onClose, onSave }) => {
   const tiposDeLuz = ['Soleado', 'Sol parcial', 'Sombra', 'Oscuro'];
 
   const handleNext = async () => {
-    if (step === 1 && tipo) {
-      setStep(2);
-    } else if (step === 2 && sububicacion) {
-      setStep(3);
-    } else if (step === 3 && luz) {
+    if (step === 1 && tipo) setStep(2);
+    else if (step === 2 && sububicacion) setStep(3);
+    else if (step === 3 && luz) {
       const nuevoEspacio = { tipo, sububicacion, luz };
-      await addDoc(collection(db, 'ambientes'), nuevoEspacio); // Guardar en Firebase
-      onSave(nuevoEspacio); // Notificar al componente padre
-      onClose(); // Cerrar modal
+      const docRef = await addDoc(collection(db, 'ambientes'), nuevoEspacio);
+      onSave({ ...nuevoEspacio, id: docRef.id }); // Asegúrate de pasar el ID
+      onClose(); // Cierra el modal automáticamente
     }
   };
 

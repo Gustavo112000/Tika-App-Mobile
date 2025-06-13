@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { collection, onSnapshot } from 'firebase/firestore';
-import { db } from '../firebase/config';
+import { db } from '../../firebase/config';
 import Header from '../components/Header';
 import Menu from '../components/Menu';
 import AñadirEspacioModal from '../components/AñadirEspacio';
@@ -12,28 +12,68 @@ const MisPlantasScreen = () => {
   const [mostrarModal, setMostrarModal] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, 'ambientes'), (snapshot) => {
+    const cargarEspacios = async () => {
+      const snapshot = await getDocs(collection(db, 'ambientes'));
       const datos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setEspacios(datos);
-    });
-
-    return unsubscribe;
+    };
+    cargarEspacios();
   }, []);
 
+  const handleGuardarEspacio = (nuevo) => {
+    setEspacios(prev => [...prev, nuevo]);
+    setMostrarModal(false);
+  };
+
+    const eliminarEspacio = async (id) => {
+      Alert.alert(
+        'Confirmación',
+        '¿Estás segura de que deseas eliminar este ambiente?',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Eliminar',
+            style: 'destructive',
+            onPress: async () => {
+              await deleteDoc(doc(db, 'ambientes', id));
+              setEspacios(prev => prev.filter(e => e.id !== id));
+            },
+          },
+        ]
+      );
+    };
   const renderItem = ({ item }) => (
-    <View style={styles.card}>
-      <Image source={require('../../assets/images/cargando.png')} style={styles.cardImage} />
-      <View style={styles.cardInfo}>
-        <Text style={styles.cardTitle}>{item.tipo} - {item.sububicacion}</Text>
-        <Text style={styles.cardSub}>{item.luz}</Text>
-        {/* Más adelante puedes añadir botones de Editar/Eliminar aquí */}
+    <View style={styles.espacioCard}>
+      <View style={styles.espacioInfo}>
+        <Ionicons name="leaf" size={24} color="#4CAF50" />
+        <Text style={styles.espacioTexto}>
+          {item.tipo} - {item.sububicacion} ({item.luz})
+        </Text>
+      </View>
+
+      <Text style={styles.noPlantas}>No hay plantas aún</Text>
+      <TouchableOpacity style={styles.agregarBtn}>
+        <Text style={styles.agregarText}>Agregar Planta</Text>
+      </TouchableOpacity>
+
+      <View style={styles.botones}>
+        <TouchableOpacity style={styles.botonEditar}>
+          <Text style={styles.botonTexto}>Editar</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.botonEliminar}
+          onPress={() => eliminarEspacio(item.id)}
+        >
+          <Text style={styles.botonTexto}>Eliminar</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
 
+
   return (
     <View style={styles.container}>
-      <Header title="Mis Plantas" />
+      <Header title="Mis Ambientes" />
 
       <Text style={styles.title}>Mis Ambientes</Text>
 
