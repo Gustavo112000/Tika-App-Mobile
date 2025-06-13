@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { View, TextInput, Text, StyleSheet, TouchableOpacity,Image, ImageBackground } from 'react-native';
+import { iniciarSesion } from '../pseudobackend/verificacionDeLoginUser';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function LoginScreen({ navigation }) {
   const [user, setUser] = useState('');
@@ -30,7 +32,20 @@ export default function LoginScreen({ navigation }) {
           <Text style={styles.buttonTextOutline}>Registrarse</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.button}>
+	<TouchableOpacity style={styles.button}
+	onPress={async () => {
+	    try {
+		console.log('Se hizo clic');
+
+		const id = await iniciarSesion(user, pass);
+		const token = await AsyncStorage.getItem('token');
+		console.log('Después de iniciarSesion:', token);
+		//navigation.navigate('HomeScreen'); // o a donde quieras dirigirlo
+	    } catch (error) {
+		Alert.alert('Error', error.message);
+	    }
+	}}
+	>
           <Text style={styles.buttonText}>Iniciar sesión</Text>
         </TouchableOpacity>
       </View>
