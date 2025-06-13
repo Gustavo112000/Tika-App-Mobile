@@ -11,7 +11,10 @@ export default function RegisterScreen() {
     <ImageBackground
       source={require('../assets/images/hojasFondo.png')}
       style={styles.backgroundImage}
-      imageStyle={styles.imageStyle}
+        imageStyle={{
+          opacity: 0.3, // Reduce la intensidad del fondo
+          transform: [{ scaleX: -1 }], // Invierte horizontalmente
+        }}
     >
       <View style={styles.container}>
         <Image source={require('../assets/images/logoTika.png')} style={styles.logo} />
@@ -39,13 +42,13 @@ const styles = StyleSheet.create({
     top: 0, 
     right: 0, 
     left: 0, 
-    height: '75%' 
+    height: '90%' 
   },
   container: { 
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   logo: { 
     width: 100, 
@@ -56,7 +59,7 @@ const styles = StyleSheet.create({
   title: { 
     fontSize: 24, 
     fontWeight: 'bold', 
-    color: 'white', 
+    color: 'black', 
     textAlign: 'center', 
     marginBottom: 20 
   },
