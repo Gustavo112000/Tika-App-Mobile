@@ -1,30 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { db } from '../firebase/firebase';
-import { collection, addDoc, doc, setDoc, getDoc } from 'firebase/firestore';
-
-
+import React, { useState } from 'react';
 import { Alert } from 'react-native';
 import { View, TextInput, Text, StyleSheet, TouchableOpacity, Image, ImageBackground } from 'react-native';
+import { registrarUsuario } from '../pseudobackend/registrarUser'
 
 export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [user, setUser] = useState('');
   const [pass, setPass] = useState('');
   const [confirm, setConfirm] = useState('');
-
-    useEffect(() => {
-	const escribirYLeer = async () => {
-	    const ref = doc(db, 'mensajes', 'hola-mundo');
-	    await setDoc(ref, { mensaje: 'Hola mundo desde Expo + Firestore!' });
-
-	    const snap = await getDoc(ref);
-	    if (snap.exists()) {
-		console.log('Documento:', snap.data());
-	    }
-	};
-
-	escribirYLeer();
-    }, []);
 
     function holi(){
 	Alert.alert('holiwis uwu')
@@ -50,7 +33,7 @@ export default function RegisterScreen() {
 
 	<TouchableOpacity 
 	style={styles.button}
-	onPress={() => holi()}
+	onPress={() => registrarUsuario(user, confirm, email)}
     >
           <Text style={styles.buttonText}>Registrarse</Text>
         </TouchableOpacity>
