@@ -2,7 +2,7 @@ import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import MisPlantasScreen from '../screens/MisPlantasScreen';
 import AmbientesScreen from '../screens/AmbientesScreen';
-import RiegoManualScreen from '../screens/RiegoManualScreen';
+import RiegoManualScreen from '../screens/RiegoManual';
 import NotificacionesScreen from '../screens/NotificacionesScreen';
 
 const Stack = createStackNavigator();

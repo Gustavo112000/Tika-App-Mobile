@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { db } from '../firebase/config';
 import Header from '../components/Header';
 import Menu from '../components/Menu';
 import AñadirEspacioModal from '../components/AñadirEspacio';
@@ -9,15 +11,23 @@ const MisPlantasScreen = () => {
   const [espacios, setEspacios] = useState([]);
   const [mostrarModal, setMostrarModal] = useState(false);
 
-  const handleGuardarEspacio = (nuevo) => {
-    if (espacios.length >= 20) return;
-    setEspacios([...espacios, nuevo]);
-  };
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, 'ambientes'), (snapshot) => {
+      const datos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setEspacios(datos);
+    });
+
+    return unsubscribe;
+  }, []);
 
   const renderItem = ({ item }) => (
-    <View style={styles.espacioCard}>
-      <Ionicons name="leaf" size={20} color="#4CAF50" />
-      <Text style={styles.espacioTexto}>{item.tipo} - {item.sububicacion} ({item.luz})</Text>
+    <View style={styles.card}>
+      <Image source={require('../../assets/images/cargando.png')} style={styles.cardImage} />
+      <View style={styles.cardInfo}>
+        <Text style={styles.cardTitle}>{item.tipo} - {item.sububicacion}</Text>
+        <Text style={styles.cardSub}>{item.luz}</Text>
+        {/* Más adelante puedes añadir botones de Editar/Eliminar aquí */}
+      </View>
     </View>
   );
 
@@ -25,37 +35,37 @@ const MisPlantasScreen = () => {
     <View style={styles.container}>
       <Header title="Mis Plantas" />
 
-      <View style={styles.content}>
-        {espacios.length === 0 ? (
-          <View style={styles.vacioContainer}>
-            <Image
-              source={require('../../assets/vacio.png')}
-              style={styles.vacioIcono}
-              resizeMode="contain"
-            />
-            <Text style={styles.vacioTexto}>No has añadido ningún espacio todavía.</Text>
-          </View>
-        ) : (
-          <FlatList
-            data={espacios}
-            keyExtractor={(_, index) => index.toString()}
-            renderItem={renderItem}
-            contentContainerStyle={styles.lista}
-          />
-        )}
-      </View>
+      <Text style={styles.title}>Mis Ambientes</Text>
 
-      <TouchableOpacity
-        style={styles.botonFlotante}
-        onPress={() => setMostrarModal(true)}
-      >
+      {espacios.length === 0 ? (
+        <View style={styles.content}>
+          <Image source={require('../../assets/images/vacio.png')} style={styles.image} />
+          <Text style={styles.subtitle}>Aún no has agregado ningún espacio</Text>
+          <TouchableOpacity style={styles.button} onPress={() => setMostrarModal(true)}>
+            <Text style={styles.buttonText}>Añadir Espacio</Text>
+          </TouchableOpacity>
+          <Text style={styles.note}>
+            Empieza a cuidar tu jardín agregando tus plantas favoritas
+            para monitorear su riego y salud.
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={espacios}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          contentContainerStyle={styles.lista}
+        />
+      )}
+
+      <TouchableOpacity style={styles.botonFlotante} onPress={() => setMostrarModal(true)}>
         <Ionicons name="add" size={32} color="white" />
       </TouchableOpacity>
 
       {mostrarModal && (
         <AñadirEspacioModal
           onClose={() => setMostrarModal(false)}
-          onSave={handleGuardarEspacio}
+          onSave={() => {}} // ya no hace falta añadir aquí, se actualizará automáticamente
         />
       )}
 
@@ -67,28 +77,44 @@ const MisPlantasScreen = () => {
 export default MisPlantasScreen;
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5FFF5',
+  container: { flex: 1, backgroundColor: '#fff' },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    margin: 20,
   },
   content: {
     flex: 1,
-    padding: 16,
-  },
-  vacioContainer: {
+    paddingHorizontal: 20,
     alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
+    marginTop: 30,
   },
-  vacioIcono: {
-    width: 120,
-    height: 120,
+  image: {
+    width: 100,
+    height: 100,
     marginBottom: 16,
   },
-  vacioTexto: {
+  subtitle: {
     fontSize: 16,
-    color: '#777',
+    color: '#4CAF50',
+    marginBottom: 24,
+  },
+  button: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 25,
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    marginBottom: 16,
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+  },
+  note: {
     textAlign: 'center',
+    fontSize: 14,
+    color: '#555',
+    marginTop: 10,
   },
   botonFlotante: {
     position: 'absolute',
@@ -108,17 +134,31 @@ const styles = StyleSheet.create({
   },
   lista: {
     paddingBottom: 100,
+    paddingHorizontal: 20,
   },
-  espacioCard: {
+  card: {
     flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: '#E8F5E9',
     padding: 12,
     borderRadius: 10,
-    marginVertical: 6,
+    marginVertical: 8,
+    alignItems: 'center',
   },
-  espacioTexto: {
-    marginLeft: 10,
+  cardImage: {
+    width: 60,
+    height: 60,
+    marginRight: 12,
+    borderRadius: 8,
+  },
+  cardInfo: {
+    flex: 1,
+  },
+  cardTitle: {
     fontSize: 16,
+    fontWeight: 'bold',
+  },
+  cardSub: {
+    fontSize: 14,
+    color: '#555',
   },
 });
