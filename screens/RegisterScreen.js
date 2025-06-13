@@ -10,7 +10,7 @@ export default function RegisterScreen() {
   return (
     <ImageBackground
       source={require('../assets/images/hojasFondo.png')}
-      style={styles.background}
+      style={styles.backgroundImage}
       imageStyle={styles.imageStyle}
     >
       <View style={styles.container}>
