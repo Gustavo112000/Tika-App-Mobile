@@ -47,13 +47,13 @@ const styles = StyleSheet.create({
     top: 0, 
     right: 0, 
     left: 0, 
-    height: '75%' 
+    height: '90%' 
   },
   container: { 
     flex: 1, 
     alignItems: 'center', 
     justifyContent: 'center', 
-    backgroundColor: 'rgba(0, 0, 0, 0.3)', 
+    backgroundColor: 'rgba(255, 255, 255, 0.3)', 
     paddingHorizontal: 20 
   },
   logo: {
