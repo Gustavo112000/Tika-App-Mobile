@@ -6,6 +6,7 @@ import {
   Image, ImageBackground
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
+// import { useNavigation } from '@react-navigation/native';
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
@@ -60,7 +61,7 @@ export default function LoginScreen({ navigation }) {
 		const id = await iniciarSesion(email, pass);
 		const token = await AsyncStorage.getItem('token');
 		console.log('Después de iniciarSesion:', id);
-		//navigation.navigate('HomeScreen'); // o a donde quieras dirigirlo
+		navigation.navigate('AmbientesScreen'); // o a donde quieras dirigirlo
 	    } catch (error) {
 		Alert.alert('Error', error.message);
 	    }
