@@ -4,7 +4,10 @@ import DescripcionPlantaScreen from './screens/detalles-plants'; // Asegúrate d
 import { NavigationContainer } from '@react-navigation/native'; 
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { PlantCard } from './components/plant-card';
-import { GardenScreen } from './screens/garden';
+import  GardenScreen  from './screens/garden';
+import AllPlantsScreen from './screens/plants';
+import { AddPlantCard } from './components/add-plant-card';
+
 const Stack = createNativeStackNavigator();
 
 export default function App() {
@@ -12,11 +15,10 @@ export default function App() {
     <>
     <NavigationContainer>
        <StatusBar style="auto" />
-       <Stack.Navigator initialRouteName="Home">
-            <Stack.Screen name="Home" component={GardenScreen} />
-            
-            <Stack.Screen name="DescripcionPlanta" component={DescripcionPlantaScreen} />
-       </Stack.Navigator>
+       <Stack.Navigator>
+          <Stack.Screen name="Garden" component={GardenScreen} />
+          <Stack.Screen name="AllPlants" component={AllPlantsScreen} options={{ title: "Todas las Plantas" }} />
+        </Stack.Navigator>
       </NavigationContainer>
    
     </>
