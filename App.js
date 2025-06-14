@@ -1,6 +1,6 @@
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
-import DescripcionPlantaScreen from './screens/detalles-plants'; // Asegúrate de respetar mayúsculas/minúsculas
+
 import { NavigationContainer } from '@react-navigation/native'; 
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { PlantCard } from './components/plant-card';
