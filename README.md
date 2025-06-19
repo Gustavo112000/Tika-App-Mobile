@@ -29,7 +29,7 @@ import { subirImagenALaNube } from './auth/cloud/subirImagenALaNube';
 const url = await subirImagenALaNube('ruta/a/imagen.jpg');
 ```
 
-**Retorna:** Un String
+**Retorna:** El link de la imagen subid (String)
 
 ```js
 "https://res.cloudinary.com/.../imagen-subida.jpg"
