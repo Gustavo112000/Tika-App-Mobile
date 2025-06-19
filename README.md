@@ -151,15 +151,14 @@ import { obtenerRiegosDePlanta } from './auth/getRiegos';
 **Uso:**
 
 ```js
-const riegos = await obtenerRiegosDePlanta('ambiente1', 'planta1');
+const riegos = await obtenerRiegosDePlanta('ambiente1', 'id_planta1');
 ```
 
-**Retorna:** un array de objetos de riegos
+**Retorna:** un objeto de riego
 
 ```js
 [
-  { fecha: '2024-06-18', cantidad: '500ml' },
-  { fecha: '2024-06-19', cantidad: '600ml' }
+  { fecha: '2024-06-18', cantidad: '500ml' }
 ]
 ```
 
