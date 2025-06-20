@@ -7,8 +7,8 @@ import { db } from '../../firebase/firebase';
 import Header from '../components/Header';
 import Menu from '../components/Menu';
 import AñadirEspacio from '../components/AñadirEspacio';
+import EditarEspacio from '../components/EditarEspacio';
 import { useNavigation } from '@react-navigation/native';
-
 
 const MisPlantasScreen = () => {
   const [espacios, setEspacios] = useState([]);
