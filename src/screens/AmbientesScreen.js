@@ -9,7 +9,7 @@ import { getID } from '../../pseudobackend/auth/getIDauth';
 const AmbientesScreen = () => {
   const [ambientes, setAmbientes] = useState([]);
   const [estadoGeneral, setEstadoGeneral] = useState('cargando');
-  const [ultimoRiego, setUltimoRiego] = useState(null);
+  const [riegosPorAmbiente, setRiegosPorAmbiente] = useState({});
 
   useEffect(() => {
     const cargarDatos = async () => {
@@ -21,6 +21,7 @@ const AmbientesScreen = () => {
         const datosAmbientes = [];
         let plantasNecesitanRiego = 0;
         let totalPlantas = 0;
+        const riegos = {};
 
         for (const ambienteDoc of snapshotAmbientes.docs) {
           const ambienteId = ambienteDoc.id;
@@ -33,34 +34,42 @@ const AmbientesScreen = () => {
           totalPlantas += numPlantas;
 
           let necesitaRiego = false;
+          let ultimoRiegoAmbiente = null;
 
-          snapshotPlantas.forEach((planta) => {
-            const data = planta.data();
+          for (const plantaDoc of snapshotPlantas.docs) {
+            const plantaId = plantaDoc.id;
+            const data = plantaDoc.data();
             const humedad = data.humedad_actual ?? 100;
+
             if (humedad < 40) {
               plantasNecesitanRiego++;
               necesitaRiego = true;
             }
-          });
 
-          // Consulta del último riego de este ambiente
-          const riegoAutoRef = collection(db, `usuarios/${idUsuario}/ambientes/${ambienteId}/riego`);
-          const ultimoRiegoSnap = await getDocs(query(riegoAutoRef, orderBy('fecha_hora', 'desc'), limit(1)));
+            const riegosRef = collection(
+              db,
+              `usuarios/${idUsuario}/ambientes/${ambienteId}/plantas/${plantaId}/riego`
+            );
+            const riegosSnap = await getDocs(query(riegosRef, orderBy('fecha_hora', 'desc'), limit(1)));
 
-          // Registrar último riego global si es más reciente
-          if (!ultimoRiegoSnap.empty) {
-            const data = ultimoRiegoSnap.docs[0].data();
-            const fecha = new Date(data.fecha_hora);
+            if (!riegosSnap.empty) {
+              const riegoData = riegosSnap.docs[0].data();
+              const riegoFecha = new Date(riegoData.fecha_hora);
 
-            if (!ultimoRiego || fecha > new Date(ultimoRiego.fecha_hora)) {
-              setUltimoRiego({
-                tipo: data.metodo,
-                duracion: data.duracion ?? '4 minutos',
-                hora: fecha.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                fecha: fecha.toLocaleDateString(),
-                fecha_hora: data.fecha_hora,
-              });
+              if (!ultimoRiegoAmbiente || riegoFecha > new Date(ultimoRiegoAmbiente.fecha_hora)) {
+                ultimoRiegoAmbiente = {
+                  tipo: riegoData.metodo,
+                  duracion: riegoData.duracion ?? '4 minutos',
+                  hora: riegoFecha.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                  fecha: riegoFecha.toLocaleDateString(),
+                  fecha_hora: riegoData.fecha_hora,
+                };
+              }
             }
+          }
+
+          if (ultimoRiegoAmbiente) {
+            riegos[ambienteId] = ultimoRiegoAmbiente;
           }
 
           datosAmbientes.push({
@@ -72,7 +81,8 @@ const AmbientesScreen = () => {
           });
         }
 
-        // Estado general del jardín
+        setRiegosPorAmbiente(riegos);
+
         if (totalPlantas === 0) {
           setEstadoGeneral('sin-plantas');
         } else if (plantasNecesitanRiego > 0) {
@@ -83,7 +93,7 @@ const AmbientesScreen = () => {
 
         setAmbientes(datosAmbientes);
       } catch (error) {
-        console.error('❌ Error al cargar datos de inicio:', error.message);
+        console.error('Error al cargar datos de inicio:', error.message);
       }
     };
 
@@ -93,11 +103,11 @@ const AmbientesScreen = () => {
   const renderEstadoPlantas = () => {
     switch (estadoGeneral) {
       case 'sin-plantas':
-        return <Text style={styles.infoText}>🌱 Aún no tienes plantas</Text>;
+        return <Text style={styles.infoText}>🪴 Aún no tienes plantas</Text>;
       case 'saludables':
         return <Text style={styles.infoText}>🌿 Todas las plantas están saludables</Text>;
       case 'requiere-riego':
-        return <Text style={styles.infoText}>⚠️ Una o más plantas necesitan riego</Text>;
+        return <Text style={styles.infoText}>💧 Una o más plantas necesitan riego</Text>;
       default:
         return <Text style={styles.infoText}>Cargando estado del jardín...</Text>;
     }
@@ -109,19 +119,17 @@ const AmbientesScreen = () => {
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.sectionTitle}>Resumen del Estado del Jardín</Text>
 
-        {/* Panel Estado de Plantas */}
         <View style={styles.cardVerde}>
           <Text style={styles.cardTitle}>Panel del Estado de Plantas</Text>
           <Text style={styles.cardSubtitle}>Controla el estado de tus plantas</Text>
           {renderEstadoPlantas()}
         </View>
 
-        {/* Sistema de Riego */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Sistema de Riego</Text>
           <Text style={styles.cardSubtitle}>Controla el riego de tus plantas</Text>
           {ambientes.length === 0 ? (
-            <Text style={styles.infoText}>🌱 Aún no tienes plantas</Text>
+            <Text style={styles.infoText}>🪴 Aún no tienes plantas</Text>
           ) : (
             ambientes.map((ambiente) => (
               <View key={ambiente.id} style={styles.ambienteRow}>
@@ -133,9 +141,7 @@ const AmbientesScreen = () => {
                 <Text
                   style={[
                     styles.estadoTexto,
-                    {
-                      color: ambiente.estado === 'Activo' ? '#00BFA6' : '#aaa',
-                    },
+                    { color: ambiente.estado === 'Activo' ? '#00BFA6' : '#aaa' },
                   ]}
                 >
                   {ambiente.estado}
@@ -145,17 +151,27 @@ const AmbientesScreen = () => {
           )}
         </View>
 
-        {/* Último Riego */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Último Riego</Text>
-          <Text style={styles.cardSubtitle}>Controla el riego de tus plantas</Text>
-          {ultimoRiego ? (
-            <Text style={styles.infoText}>
-              💧 Riego {ultimoRiego.tipo.toLowerCase()} realizado el {ultimoRiego.fecha} a las {ultimoRiego.hora}.{'\n'}
-              Duración: {ultimoRiego.duracion}.
-            </Text>
+          <Text style={styles.cardSubtitle}>Estado del último riego por ambiente</Text>
+          {ambientes.length === 0 ? (
+            <Text style={styles.infoText}>🪴 Aún no tienes ambientes</Text>
           ) : (
-            <Text style={styles.infoText}>🌧 No se realizó ningún riego aún</Text>
+            ambientes.map((amb) => {
+              const riego = riegosPorAmbiente[amb.id];
+              return (
+                <View key={amb.id} style={{ marginBottom: 8 }}>
+                  <Text style={styles.ambienteNombre}>{amb.nombre}</Text>
+                  {riego ? (
+                    <Text style={styles.infoText}>
+                      Riego {riego.tipo.toLowerCase()} el {riego.fecha} a las {riego.hora}. Duración: {riego.duracion}.
+                    </Text>
+                  ) : (
+                    <Text style={styles.infoText}>No se realizó ningún riego aún</Text>
+                  )}
+                </View>
+              );
+            })
           )}
         </View>
       </ScrollView>
