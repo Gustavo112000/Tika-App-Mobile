@@ -1,97 +1,310 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Image,
-  ScrollView,
-  Switch,
-  Modal,
-  Alert,
-} from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {View,   Text,   StyleSheet,   TouchableOpacity,   Image,   ScrollView,   Switch,   Modal,   Alert, } from 'react-native';
 import Header from '../components/Header';
 import Menu from '../components/Menu';
 import { Ionicons } from '@expo/vector-icons';
+import {query, orderBy,limit ,doc,getDocs, setDoc, updateDoc, collection, addDoc } from 'firebase/firestore';
+import { db } from '../../firebase/firebase';
+import { getID } from '../../pseudobackend/auth/getIDauth';
+import { obtenerPlantasDeAmbiente } from '../../pseudobackend/auth/getPlantas';
+
+
 
 const obtenerFechaActual = () => {
   const fecha = new Date();
   return `${fecha.toLocaleDateString()} a las ${fecha.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
 };
 
-const riegosIniciales = [
-  {
-    id: '1',
-    ambiente: 'Jard├¡n',
-    plantas: 3,
-    imagen: require('../../assets/images/foto.png'),
-    estado: 'inactivo',
-    ultimoRiego: null,
-  },
-  {
-    id: '2',
-    ambiente: 'Huerto',
-    plantas: 2,
-    imagen: require('../../assets/images/foto.png'),
-    estado: 'completado',
-    ultimoRiego: '31/12/2024 a las 00:00',
-  },
-];
-
 const RiegoScreen = () => {
-  const [riegosManuales, setRiegosManuales] = useState(riegosIniciales);
+  const [riegosManuales, setRiegosManuales] = useState([]);
   const [estadoAuto, setEstadoAuto] = useState({});
   const [modalVisible, setModalVisible] = useState(false);
   const [riegoSeleccionado, setRiegoSeleccionado] = useState(null);
   const [nuevoEstado, setNuevoEstado] = useState(false);
   const [modalPlantasVisible, setModalPlantasVisible] = useState(false);
+  const [plantasDelAmbiente, setPlantasDelAmbiente] = useState([]);
+  const [ambienteSeleccionado, setAmbienteSeleccionado] = useState(null);
+  const [infoRiegoAuto, setInfoRiegoAuto] = useState({}); // { ambienteId: { estado, fecha } }
+  const [plantasSeleccionadas, setPlantasSeleccionadas] = useState([]);
+  const [estadoRiegoPlantas, setEstadoRiegoPlantas] = useState({});
+  
+  const toggleSeleccionPlanta = (id) => {
+  setPlantasSeleccionadas((prev) =>
+    prev.includes(id) ? prev.filter((pid) => pid !== id) : [...prev, id]
+  );
+};
 
-  const toggleSwitch = (item) => {
-    setRiegoSeleccionado(item);
-    setNuevoEstado(!estadoAuto[item.id]);
-    setModalVisible(true);
-  };
+const regarPlantasSeleccionadas = () => {
+  if (plantasSeleccionadas.length === 0) {
+    Alert.alert('Selecciona al menos una planta');
+    return;
+  }
+  // Alert.alert('Simulación', `Regando plantas: ${plantasSeleccionadas.join(', ')}`);
+    Alert.alert('Simulación', `Regando plantas: ${
+	plantasSeleccionadas
+	.map(id => {
+	      const planta = plantasDelAmbiente.find(planta => planta.id === id);
+	      return planta ? planta.nombre : null;  // Si no se encuentra la planta, devuelve null
+	})
+	.filter(nombre => nombre !== null)  // Filtra valores null (por si hubo IDs no válidos)
+	.join(', ')  // Unir los nombres en una cadena
+    }`);
+};
+const toggleRiegoIndividual = (idPlanta) => {
+  const estadoActual = estadoRiegoPlantas[idPlanta];
+  if (estadoActual === 'regando') {
+    setEstadoRiegoPlantas((prev) => ({ ...prev, [idPlanta]: 'completado' }));
+  } else {
+    setEstadoRiegoPlantas((prev) => ({ ...prev, [idPlanta]: 'regando' }));
+    setTimeout(() => {
+      setEstadoRiegoPlantas((prev) => ({ ...prev, [idPlanta]: 'completado' }));
+    }, 3000);
+  }
+};
+  // Cargar ambientes desde Firebase
+  useEffect(() => {
+    const cargarAmbientesConPlantas = async () => {
+  try {
+    const idUsuario = await getID();
+    const ambientesRef = collection(db, `usuarios/${idUsuario}/ambientes`);
+    const ambientesSnapshot = await getDocs(ambientesRef);
 
-  const confirmarCambio = () => {
+    const datosAmbientes = [];
+
+    for (const docAmbiente of ambientesSnapshot.docs) {
+      const ambienteId = docAmbiente.id;
+
+      const plantasRef = collection(db, `usuarios/${idUsuario}/ambientes/${ambienteId}/plantas`);
+      const plantasSnapshot = await getDocs(plantasRef);
+
+      const riegoRef = collection(db, `usuarios/${idUsuario}/ambientes/${ambienteId}/riego`);
+      const ultimoRiegoQuery = query(riegoRef, orderBy('fecha_hora', 'desc'), limit(1));
+      const ultimoRiegoSnap = await getDocs(ultimoRiegoQuery);
+
+      let estado = 'inactivo';
+      let ultimoRiego = null;
+
+      if (!ultimoRiegoSnap.empty) {
+        const data = ultimoRiegoSnap.docs[0].data();
+        const fechaRiego = new Date(data.fecha_hora);
+        ultimoRiego = fechaRiego.toLocaleString();
+
+        const ahora = new Date();
+        const diffMs = ahora - fechaRiego;
+
+        if (diffMs < 2 * 60 * 1000) {
+          estado = 'completado';
+        }
+      }
+
+      datosAmbientes.push({
+        id: ambienteId,
+        ambiente: ambienteId,
+        plantas: plantasSnapshot.size,
+        imagen: require('../../assets/images/foto.png'),
+        estado,
+        ultimoRiego,
+      });
+    }
+
+    setRiegosManuales(datosAmbientes);
+  } catch (error) {
+    console.error('Error al cargar ambientes:', error.message);
+  }
+};
+
+      cargarAmbientesConPlantas();
+    }, []);
+
+const registrarRiegoEnFirebase = async (ambienteId, metodo='Manual') => {
+    try {
+	const idUsuario = await getID();
+	const plantasRef = collection(db, `usuarios/${idUsuario}/ambientes/Dormitorio/plantas`);
+	const snapshot = await getDocs(plantasRef);
+
+	const fechaHora = new Date().toISOString();
+
+	for (const docPlanta of plantasDelAmbiente) {
+	    const plantaId = docPlanta.id;
+
+	    // Registrar evento de riego
+	    const riegoRef = collection(
+		db,
+		`usuarios/${idUsuario}/ambientes/${ambienteId}/plantas/${plantaId}/riego`
+	    );
+	    await addDoc(riegoRef, {
+		metodo: metodo,
+		fecha_hora: fechaHora,
+		duracion: '4 minutos',
+	    });
+
+	    // ACTUALIZAR HUMEDAD ACTUAL (simulado a 80%)
+	    await updateDoc(
+		doc(db, `usuarios/${idUsuario}/ambientes/${ambienteId}/plantas/${plantaId}`),
+		{ humedad_actual: 1 }
+	    );
+	}
+
+	console.log(`Riego manual registrado y humedad actualizada en ${ambienteId}`);
+    } catch (error) {
+	console.error('Error al registrar riego:', error.message);
+    }
+};
+
+  const cargarAmbientesConPlantas = async () => {
+  try {
+    const idUsuario = await getID();
+    const ambientesRef = collection(db, `usuarios/${idUsuario}/ambientes`);
+    const ambientesSnapshot = await getDocs(ambientesRef);
+
+    const datosAmbientes = [];
+
+    for (const docAmbiente of ambientesSnapshot.docs) {
+      const ambienteId = docAmbiente.id;
+
+      const plantasRef = collection(db, `usuarios/${idUsuario}/ambientes/${ambienteId}/plantas`);
+      const plantasSnapshot = await getDocs(plantasRef);
+
+      // 🔍 Cargar último riego
+      const riegoRef = collection(db, `usuarios/${idUsuario}/ambientes/${ambienteId}/riego`);
+      const ultimoRiegoQuery = query(riegoRef, orderBy('fecha_hora', 'desc'), limit(1));
+      const ultimoRiegoSnap = await getDocs(ultimoRiegoQuery);
+
+      let estado = 'inactivo';
+      let ultimoRiego = null;
+
+      if (!ultimoRiegoSnap.empty) {
+        const data = ultimoRiegoSnap.docs[0].data();
+        const fechaRiego = new Date(data.fecha_hora);
+        ultimoRiego = fechaRiego.toLocaleString();
+
+        const ahora = new Date();
+        const diffMs = ahora - fechaRiego;
+
+        if (diffMs < 2 * 60 * 1000) {
+          estado = 'completado'; // Aún no pasaron los 2 minutos
+        }
+      }
+
+      datosAmbientes.push({
+        id: ambienteId,
+        ambiente: ambienteId,
+        plantas: plantasSnapshot.size,
+        imagen: require('../../assets/images/foto.png'),
+        estado,
+        ultimoRiego,
+      });
+    }
+
+    setRiegosManuales(datosAmbientes);
+  } catch (error) {
+    console.error('Error al cargar ambientes:', error.message);
+  }
+};
+
+    const toggleSwitch = (item) => {
+      setRiegoSeleccionado(item);
+      setNuevoEstado(!estadoAuto[item.id]);
+      setModalVisible(true);
+    };
+
+    const calcularProximoRiego = () => {
+    const fecha = new Date();
+    fecha.setDate(fecha.getDate() + 1); // mañana
+    return `${fecha.toLocaleDateString()} a las ${fecha.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    };
+
+    const confirmarCambio = () => {
     setEstadoAuto((prev) => ({ ...prev, [riegoSeleccionado.id]: nuevoEstado }));
     setModalVisible(false);
 
     // Simula lectura de humedad
-    const humedad = Math.floor(Math.random() * 100);
-    if (nuevoEstado && humedad < 30) {
-      iniciarRiegoAutomatico(riegoSeleccionado.id);
+    const humedad = Math.floor(Math.random() * 100); // valor entre 0 y 100
+    const humedadMinima = 40; // puedes calcularlo según planta luego
+
+    if (nuevoEstado) {
+      if (humedad < humedadMinima) {
+        // Inicia riego automático
+        iniciarRiegoAutomatico(riegoSeleccionado.id, true);
+      } else {
+        // No es necesario regar, mostrar estimación
+        setInfoRiegoAuto((prev) => ({
+          ...prev,
+          [riegoSeleccionado.id]: {
+            estado: 'esperando',
+            fecha: calcularProximoRiego(),
+          }
+        }));
+      }
+    } else {
+      // Desactiva
+      setInfoRiegoAuto((prev) => {
+        const copia = { ...prev };
+        delete copia[riegoSeleccionado.id];
+        return copia;
+      });
     }
   };
 
-  const iniciarRiegoAutomatico = (id) => {
-    setRiegosManuales((prev) =>
-      prev.map((r) =>
-        r.id === id ? { ...r, estado: 'regando' } : r
-      )
-    );
-    setTimeout(() => {
-      setRiegosManuales((prev) =>
-        prev.map((r) =>
-          r.id === id ? { ...r, estado: 'completado', ultimoRiego: obtenerFechaActual() } : r
-        )
-      );
-    }, 3000);
-  };
 
-  const iniciarRiegoManualAmbiente = (id) => {
+  const iniciarRiegoAutomatico = (id, esAutomatico = false) => {
+  setRiegosManuales((prev) =>
+    prev.map((r) =>
+      r.id === id ? { ...r, estado: 'regando' } : r
+    )
+  );
+
+  if (esAutomatico) {
+    setInfoRiegoAuto((prev) => ({
+      ...prev,
+      [id]: { estado: 'regando' }
+    }));
+  }
+
+  setTimeout(() => {
+    const fecha = obtenerFechaActual();
+
     setRiegosManuales((prev) =>
       prev.map((r) =>
-        r.id === id ? { ...r, estado: 'regando' } : r
+        r.id === id ? { ...r, estado: 'completado', ultimoRiego: fecha } : r
       )
     );
+
+    if (esAutomatico) {
+      setInfoRiegoAuto((prev) => ({
+        ...prev,
+        [id]: { estado: 'completado', fecha }
+      }));
+    }
+  }, 3000);
+};
+
+
+  const iniciarRiegoManualAmbiente = async (id) => {
+  setRiegosManuales((prev) =>
+    prev.map((r) => (r.id === id ? { ...r, estado: 'regando' } : r))
+  );
+
+  setTimeout(async () => {
+    const fecha = obtenerFechaActual();
+
+    setRiegosManuales((prev) =>
+      prev.map((r) =>
+        r.id === id ? { ...r, estado: 'completado', ultimoRiego: fecha } : r
+      )
+    );
+
+    await registrarRiegoEnFirebase(id, 'Manual');
     setTimeout(() => {
       setRiegosManuales((prev) =>
         prev.map((r) =>
-          r.id === id ? { ...r, estado: 'completado', ultimoRiego: obtenerFechaActual() } : r
+          r.id === id ? { ...r, estado: 'inactivo' } : r
         )
       );
-    }, 3000);
-  };
+    }, 120000); // 2 minutos en milisegundos
+  }, 3000);
+};
+
 
   const detenerRiego = (id) => {
     setRiegosManuales((prev) =>
@@ -101,8 +314,18 @@ const RiegoScreen = () => {
     );
   };
 
-  const abrirModalPlantas = () => setModalPlantasVisible(true);
+  const abrirModalPlantas = async (ambiente) => {
+  try {
+    const plantas = await obtenerPlantasDeAmbiente(ambiente);
+    setAmbienteSeleccionado(ambiente);
+    setPlantasDelAmbiente(plantas);
+    setModalPlantasVisible(true);
+  } catch (error) {
+    console.error('Error al cargar plantas del ambiente:', error.message);
+  }
+};
   const cerrarModalPlantas = () => setModalPlantasVisible(false);
+  
 
   const renderRiegoManual = ({ item }) => (
     <View key={item.id} style={styles.card}>
@@ -115,14 +338,19 @@ const RiegoScreen = () => {
           <>
             <TouchableOpacity
               style={styles.botonCeleste}
-              onPress={() => iniciarRiegoManualAmbiente(item.id)}
+		//borrame
+	    onPress={() => {
+		console.log('ID de la planta:', item.id);
+		iniciarRiegoManualAmbiente(item.id)
+		}
+	    }
             >
               <Ionicons name="water" size={16} color="white" style={styles.icono} />
               <Text style={styles.botonTexto}>Regar todo el ambiente</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.botonTransparente}
-              onPress={abrirModalPlantas}
+              onPress={() => abrirModalPlantas(item.ambiente)}
             >
               <Ionicons name="leaf-outline" size={16} color="#00BFA6" style={styles.icono} />
               <Text style={styles.botonTextoCeleste}>Seleccionar planta</Text>
@@ -132,7 +360,7 @@ const RiegoScreen = () => {
 
         {item.estado === 'regando' && (
           <>
-            <Text style={styles.subtexto}>­ƒÆº Riego en curso...</Text>
+            <Text style={styles.subtexto}>­ Riego en curso...</Text>
             <TouchableOpacity
               style={styles.botonCeleste}
               onPress={() => detenerRiego(item.id)}
@@ -144,7 +372,7 @@ const RiegoScreen = () => {
 
         {item.estado === 'completado' && (
           <>
-            <Text style={styles.subtexto}>├Ültimo riego: {item.ultimoRiego}</Text>
+            <Text style={styles.subtexto}>Último riego: {item.ultimoRiego}</Text>
             <TouchableOpacity
               style={styles.botonCeleste}
               onPress={() => iniciarRiegoManualAmbiente(item.id)}
@@ -165,16 +393,23 @@ const RiegoScreen = () => {
         <Text style={styles.sectionTitle}>Riego Manual</Text>
         {riegosManuales.map((item) => renderRiegoManual({ item }))}
 
-        <Text style={styles.sectionTitle}>Riego autom├ítico</Text>
+        <Text style={styles.sectionTitle}>Riego automático</Text>
         {riegosManuales.map((item) => (
           <View key={`auto-${item.id}`} style={styles.card}>
             <Image source={item.imagen} style={styles.image} />
             <View style={styles.infoContainer}>
               <Text style={styles.ambiente}>{item.ambiente}</Text>
               <Text style={styles.subtexto}>{item.plantas} Planta</Text>
-              <Text style={styles.subtexto}>
-                ├Ültimo riego: {item.ultimoRiego || 'N/A'}
-              </Text>
+              {infoRiegoAuto[item.id]?.estado === 'regando' && (
+  <Text style={styles.subtexto}>🌧 Riego en curso...</Text>
+)}
+{infoRiegoAuto[item.id]?.estado === 'completado' && (
+  <Text style={styles.subtexto}>💧 Último riego: {infoRiegoAuto[item.id].fecha}</Text>
+)}
+{infoRiegoAuto[item.id]?.estado === 'esperando' && (
+  <Text style={styles.subtexto}>⏱ Próximo riego: {infoRiegoAuto[item.id].fecha}</Text>
+)}
+
             </View>
             <Switch
               value={estadoAuto[item.id] || false}
@@ -199,49 +434,110 @@ const RiegoScreen = () => {
             <Text style={styles.modalTitle}>{riegoSeleccionado?.ambiente}</Text>
             <Text style={styles.modalText}>{riegoSeleccionado?.plantas} Planta</Text>
             <Text style={styles.modalSubText}>
-              {nuevoEstado ? 'Riego Autom├ítico' : 'Riego Manual'}
+              {nuevoEstado ? 'Riego Automatico' : 'Riego Manual'}
             </Text>
             <TouchableOpacity
               style={styles.modalButton}
               onPress={confirmarCambio}
             >
               <Text style={styles.modalButtonText}>
-                Cambiar a {nuevoEstado ? 'Riego Autom├ítico' : 'Riego Manual'}
+                Cambiar a {nuevoEstado ? 'Riego Automatico' : 'Riego Manual'}
               </Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
+        
+        <Modal transparent visible={modalPlantasVisible} animationType="slide">
+  <View style={styles.modalContainer}>
+    <View style={[styles.modalContent, { alignItems: 'stretch' }]}>
+      <TouchableOpacity style={styles.modalClose} onPress={cerrarModalPlantas}>
+        <Ionicons name="close" size={20} color="#333" />
+      </TouchableOpacity>
 
-      {/* Modal Selecci├│n de Planta */}
-      <Modal transparent visible={modalPlantasVisible} animationType="slide">
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <TouchableOpacity
-              style={styles.modalClose}
-              onPress={cerrarModalPlantas}
-            >
-              <Ionicons name="close" size={20} color="#333" />
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Selecciona una planta</Text>
-            <Text style={styles.modalSubText}>ÔÜÖ´©Å Funcionalidad simulada</Text>
-            <TouchableOpacity
-              style={styles.modalButton}
-              onPress={() => {
-                cerrarModalPlantas();
-                Alert.alert('Simulaci├│n', 'Regando planta seleccionada...');
-              }}
-            >
-              <Text style={styles.modalButtonText}>Regar planta</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+      <Text style={[styles.sectionTitle, { alignSelf: 'center' }]}>Riego Manual</Text>
+      <Text style={[styles.ambiente, { alignSelf: 'center' }]}>{ambienteSeleccionado}</Text>
+      <Text style={[styles.subtexto, { alignSelf: 'center' }]}>
+        Selecciona plantas para regar
+      </Text>
+
+      <ScrollView
+  horizontal
+  showsHorizontalScrollIndicator={false}
+  contentContainerStyle={{ paddingVertical: 16, paddingHorizontal: 12 }}
+>
+  {plantasDelAmbiente.map((planta) => (
+    <TouchableOpacity
+      key={planta.id}
+      onPress={() => toggleSeleccionPlanta(planta.id)}
+      style={{
+        width: 160,
+        marginHorizontal: 8,
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: plantasSeleccionadas.includes(planta.id) ? '#00BFA6' : '#eee',
+        backgroundColor: '#fff',
+        padding: 10,
+      }}
+    >
+      <Image
+        source={{ uri: planta.foto_url || 'https://via.placeholder.com/150' }}
+        style={{
+          width: '100%',
+          height: 100,
+          borderRadius: 8,
+          marginBottom: 8,
+        }}
+      />
+      <Text style={{ fontWeight: 'bold', fontSize: 14 }}>{planta.nombre}</Text>
+      <Text style={{ fontSize: 12, color: '#777' }}>
+        {estadoRiegoPlantas[planta.id] === 'regando'
+          ? '🌧 Riego en curso...'
+          : `Último riego: ${planta.ultimo_riego || 'N/A'}`}
+      </Text>
+      <TouchableOpacity
+        style={styles.botonCeleste}
+        onPress={() => toggleRiegoIndividual(planta.id)}
+      >
+        <Text style={styles.botonTexto}>
+          {estadoRiegoPlantas[planta.id] === 'regando'
+            ? 'Detener riego'
+            : 'Repetir riego'}
+        </Text>
+      </TouchableOpacity>
+    </TouchableOpacity>
+  ))}
+</ScrollView>
+
+  <TouchableOpacity
+  style={[styles.botonCeleste, { marginTop: 8, alignSelf: 'center' }]}
+  onPress={() => {
+    cerrarModalPlantas();
+    iniciarRiegoManualAmbiente(ambienteSeleccionado);
+  }}
+>
+  <Ionicons name="water" size={16} color="white" style={styles.icono} />
+  <Text style={styles.botonTexto}>Regar todo el ambiente</Text>
+</TouchableOpacity>
+      <TouchableOpacity
+  style={[styles.botonTransparente, { alignSelf: 'center' }]}
+  onPress={regarPlantasSeleccionadas}
+>
+  <Ionicons name="leaf-outline" size={16} color="#00BFA6" style={styles.icono} />
+  <Text style={styles.botonTextoCeleste}>Regar plantas seleccionadas</Text>
+</TouchableOpacity>
+
+    </View>
+  </View>
+</Modal>
+
+
 
       <Menu />
     </View>
   );
 };
+
 
 export default RiegoScreen;
 
@@ -351,5 +647,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     width: '100%',
   },
+  
+  
 });
 
