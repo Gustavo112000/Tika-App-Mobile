@@ -65,6 +65,48 @@ useEffect(() => {
   return () => clearInterval(intervalo); // limpieza
 }, []);
 
+useEffect(() => {
+  const intervaloRiegoAuto = setInterval(async () => {
+    try {
+      const idUsuario = await getID();
+
+      for (const ambienteId in estadoAuto) {
+        if (!estadoAuto[ambienteId]) continue; // Solo si el riego automático está activo
+
+        const plantasRef = collection(db, `usuarios/${idUsuario}/ambientes/${ambienteId}/plantas`);
+        const snapshot = await getDocs(plantasRef);
+
+        let humedadBaja = false;
+
+        for (const docPlanta of snapshot.docs) {
+          const data = docPlanta.data();
+          if ((data.humedad_actual ?? 0) < 40) {
+            humedadBaja = true;
+            break;
+          }
+        }
+
+        if (humedadBaja) {
+          iniciarRiegoAutomatico(ambienteId, true);
+        } else {
+          setInfoRiegoAuto((prev) => ({
+            ...prev,
+            [ambienteId]: {
+              estado: 'esperando',
+              fecha: calcularProximoRiego(),
+            }
+          }));
+        }
+      }
+
+    } catch (error) {
+      console.error("❌ Error en el riego automático:", error.message);
+    }
+  }, 120000); // cada 2 minutos
+
+  return () => clearInterval(intervaloRiegoAuto);
+}, [estadoAuto]);
+
 const regarPlantasSeleccionadas = async () => {
   if (plantasSeleccionadas.length === 0) {
     Alert.alert('Selecciona al menos una planta');
@@ -563,7 +605,7 @@ const registrarRiegoEnFirebase = async (ambienteId, metodo = 'Manual') => {
         Selecciona plantas para regar
       </Text>
 
-      <ScrollView
+<ScrollView
   horizontal
   showsHorizontalScrollIndicator={false}
   contentContainerStyle={{ paddingVertical: 16, paddingHorizontal: 12 }}
@@ -589,13 +631,14 @@ const registrarRiegoEnFirebase = async (ambienteId, metodo = 'Manual') => {
           height: 100,
           borderRadius: 8,
           marginBottom: 8,
+          resizeMode: 'cover',
         }}
       />
-      <Text style={{ fontWeight: 'bold', fontSize: 14 }}>{planta.nombre}</Text>
-      <Text style={{ fontSize: 12, color: '#777' }}>
-        {estadoRiegoPlantas[planta.id] === 'regando'
-          ? '🌧 Riego en curso...'
-          : `Último riego: ${planta.ultimo_riego || 'N/A'}`}
+      <Text style={{ fontWeight: 'bold', fontSize: 14, marginBottom: 4 }}>
+        {planta.nombre}
+      </Text>
+      <Text style={{ fontSize: 12, color: '#777', marginBottom: 8 }}>
+        Último riego: {planta.ultimo_riego || 'N/A'}
       </Text>
       <TouchableOpacity
         style={styles.botonCeleste}
@@ -610,6 +653,7 @@ const registrarRiegoEnFirebase = async (ambienteId, metodo = 'Manual') => {
     </TouchableOpacity>
   ))}
 </ScrollView>
+
 
   <TouchableOpacity
   style={[styles.botonCeleste, { marginTop: 8, alignSelf: 'center' }]}
