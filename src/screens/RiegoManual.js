@@ -33,23 +33,81 @@ const RiegoScreen = () => {
     prev.includes(id) ? prev.filter((pid) => pid !== id) : [...prev, id]
   );
 };
+useEffect(() => {
+  const intervalo = setInterval(async () => {
+    try {
+      const idUsuario = await getID();
+      const ambientesRef = collection(db, `usuarios/${idUsuario}/ambientes`);
+      const ambientesSnapshot = await getDocs(ambientesRef);
 
-const regarPlantasSeleccionadas = () => {
+      for (const ambienteDoc of ambientesSnapshot.docs) {
+        const ambienteId = ambienteDoc.id;
+        const plantasRef = collection(db, `usuarios/${idUsuario}/ambientes/${ambienteId}/plantas`);
+        const plantasSnapshot = await getDocs(plantasRef);
+
+        for (const plantaDoc of plantasSnapshot.docs) {
+          const plantaData = plantaDoc.data();
+          const humedadActual = plantaData.humedad_actual ?? 0;
+          const nuevaHumedad = Math.max(0, humedadActual - 40);
+
+          await updateDoc(doc(db, `usuarios/${idUsuario}/ambientes/${ambienteId}/plantas/${plantaDoc.id}`), {
+            humedad_actual: nuevaHumedad,
+          });
+        }
+      }
+
+      console.log("✔ Humedades actualizadas cada 2 minutos.");
+    } catch (error) {
+      console.error("❌ Error al actualizar humedades:", error.message);
+    }
+  }, 120000); // 2 minutos
+
+  return () => clearInterval(intervalo); // limpieza
+}, []);
+
+const regarPlantasSeleccionadas = async () => {
   if (plantasSeleccionadas.length === 0) {
     Alert.alert('Selecciona al menos una planta');
     return;
   }
-  // Alert.alert('Simulación', `Regando plantas: ${plantasSeleccionadas.join(', ')}`);
-    Alert.alert('Simulación', `Regando plantas: ${
-	plantasSeleccionadas
-	.map(id => {
-	      const planta = plantasDelAmbiente.find(planta => planta.id === id);
-	      return planta ? planta.nombre : null;  // Si no se encuentra la planta, devuelve null
-	})
-	.filter(nombre => nombre !== null)  // Filtra valores null (por si hubo IDs no válidos)
-	.join(', ')  // Unir los nombres en una cadena
-    }`);
+
+  try {
+    const idUsuario = await getID();
+    const fechaHora = new Date().toISOString();
+
+    for (const plantaId of plantasSeleccionadas) {
+      const planta = plantasDelAmbiente.find(p => p.id === plantaId);
+      if (!planta) continue;
+
+      // 1. Registrar evento de riego
+      const riegoRef = collection(
+        db,
+        `usuarios/${idUsuario}/ambientes/${ambienteSeleccionado}/plantas/${plantaId}/riego`
+      );
+      await addDoc(riegoRef, {
+        metodo: 'Manual',
+        fecha_hora: fechaHora,
+        duracion: '4 minutos',
+      });
+
+      // 2. Actualizar humedad
+      await updateDoc(
+        doc(db, `usuarios/${idUsuario}/ambientes/${ambienteSeleccionado}/plantas/${plantaId}`),
+        { humedad_actual: 80 }
+      );
+    }
+
+    Alert.alert('Éxito', 'Las plantas seleccionadas fueron regadas.');
+    setPlantasSeleccionadas([]); // Limpiar selección
+
+  } catch (error) {
+    console.error('❌ Error al regar plantas seleccionadas:', error.message);
+    Alert.alert('Error', 'No se pudo completar el riego.');
+  }
 };
+
+
+
 const toggleRiegoIndividual = (idPlanta) => {
   const estadoActual = estadoRiegoPlantas[idPlanta];
   if (estadoActual === 'regando') {
@@ -116,48 +174,56 @@ const toggleRiegoIndividual = (idPlanta) => {
       cargarAmbientesConPlantas();
     }, []);
 
-async function registrarRiegoenFirebase(ambienteid, metodo = 'manual') {
+const registrarRiegoEnFirebase = async (ambienteId, metodo = 'Manual') => {
   try {
-    const idusuario = await getID();
+    const idUsuario = await getID();
+    const plantasRef = collection(db, `usuarios/${idUsuario}/ambientes/${ambienteId}/plantas`);
+    const snapshot = await getDocs(plantasRef);
 
-    // Vuelves a leer las plantas del ambiente que te pasaron
-    const plantasRef = collection(
-      db,
-      `usuarios/${idusuario}/ambientes/${ambienteid}/plantas`
-    );
-    const plantasSnap = await getDocs(plantasRef);
+    const fechaHora = new Date().toISOString();
+    const plantaIds = [];
 
-    const fechahora = new Date().toISOString();
-    console.log("Registrando riego en ambiente:", ambienteid);
+    for (const docPlanta of snapshot.docs) {
+      const plantaId = docPlanta.id;
+      plantaIds.push(plantaId);
 
-    // Itera sobre cada planta documentada
-    for (const plantaDoc of plantasSnap.docs) {
-      const plantaid = plantaDoc.id;
-
-      // Registrar el riego
+      // Registrar evento de riego
       const riegoRef = collection(
         db,
-        `usuarios/${idusuario}/ambientes/${ambienteid}/plantas/${plantaid}/riego`
+        `usuarios/${idUsuario}/ambientes/${ambienteId}/plantas/${plantaId}/riego`
       );
       await addDoc(riegoRef, {
         metodo,
-        fecha_hora: fechahora,
+        fecha_hora: fechaHora,
         duracion: '4 minutos',
       });
 
-      // Actualizar humedad
-      const plantaRef = doc(
-        db,
-        `usuarios/${idusuario}/ambientes/${ambienteid}/plantas/${plantaid}`
+      // Actualizar humedad inicial a 80%
+      await updateDoc(
+        doc(db, `usuarios/${idUsuario}/ambientes/${ambienteId}/plantas/${plantaId}`),
+        { humedad_actual: 100 }
       );
-      await updateDoc(plantaRef, { humedad_actual: 51 });
     }
 
-    console.log(`Riego manual registrado y humedad actualizada en ${ambienteid}`);
+    console.log(`✅ Riego registrado y humedad actualizada a 80% para ${ambienteId}`);
+
+    // 🔁 Simulación: después de 2 minutos, baja la humedad a 40%
+    setTimeout(async () => {
+      for (const plantaId of plantaIds) {
+        await updateDoc(
+          doc(db, `usuarios/${idUsuario}/ambientes/${ambienteId}/plantas/${plantaId}`),
+          { humedad_actual: 40 }
+        );
+        console.log(`🌡 Humedad de ${plantaId} reducida a 40% después de 2 minutos`);
+      }
+    }, 120000); // 2 minutos
+
   } catch (error) {
-    console.error('Error al registrar riego:', error.message);
+    console.error('❌ Error al registrar riego:', error.message);
   }
-}
+};
+
+
 
   const cargarAmbientesConPlantas = async () => {
   try {
@@ -269,9 +335,11 @@ async function registrarRiegoenFirebase(ambienteid, metodo = 'manual') {
     }));
   }
 
-  setTimeout(() => {
+    setTimeout(async () => {
     const fecha = obtenerFechaActual();
+    const idUsuario = await getID();
 
+    // Actualizar UI
     setRiegosManuales((prev) =>
       prev.map((r) =>
         r.id === id ? { ...r, estado: 'completado', ultimoRiego: fecha } : r
@@ -284,7 +352,33 @@ async function registrarRiegoenFirebase(ambienteid, metodo = 'manual') {
         [id]: { estado: 'completado', fecha }
       }));
     }
+
+    // Registrar riego automático en Firebase
+    const plantasRef = collection(db, `usuarios/${idUsuario}/ambientes/${id}/plantas`);
+    const plantasSnap = await getDocs(plantasRef);
+    const fechaISO = new Date().toISOString();
+
+    for (const docPlanta of plantasSnap.docs) {
+      const plantaId = docPlanta.id;
+
+      // Agregar evento de riego
+      const riegoRef = collection(db, `usuarios/${idUsuario}/ambientes/${id}/plantas/${plantaId}/riego`);
+      await addDoc(riegoRef, {
+        metodo: 'Automático',
+        fecha_hora: fechaISO,
+        duracion: '4 minutos'
+      });
+
+      // Actualizar humedad 
+      await updateDoc(
+        doc(db, `usuarios/${idUsuario}/ambientes/${id}/plantas/${plantaId}`),
+        { humedad_actual: 100 }
+      );
+    }
+
+    console.log(`🌧 Riego automático completado y humedad actualizada en ambiente ${id}`);
   }, 3000);
+
 };
 
 
@@ -302,7 +396,7 @@ async function registrarRiegoenFirebase(ambienteid, metodo = 'manual') {
       )
     );
 
-    await registrarRiegoenFirebase(id, 'Manual');
+    await registrarRiegoEnFirebase(id, 'Manual');
     setTimeout(() => {
       setRiegosManuales((prev) =>
         prev.map((r) =>
@@ -346,7 +440,12 @@ async function registrarRiegoenFirebase(ambienteid, metodo = 'manual') {
           <>
             <TouchableOpacity
               style={styles.botonCeleste}
-	    onPress={() => iniciarRiegoManualAmbiente(item.id)}
+		//borrame
+	    onPress={() => {
+		console.log('ID de la planta:', item.id);
+		iniciarRiegoManualAmbiente(item.id)
+		}
+	    }
             >
               <Ionicons name="water" size={16} color="white" style={styles.icono} />
               <Text style={styles.botonTexto}>Regar todo el ambiente</Text>
@@ -650,7 +749,5 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     width: '100%',
   },
-  
-  
 });
 
