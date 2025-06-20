@@ -4,6 +4,7 @@ import MisPlantasScreen from '../screens/MisPlantasScreen';
 import AmbientesScreen from '../screens/AmbientesScreen';
 import RiegoManualScreen from '../screens/RiegoManual';
 import NotificacionesScreen from '../screens/NotificacionesScreen';
+import Garden from '../../screens/garden';
 
 const Stack = createStackNavigator();
 
@@ -14,6 +15,7 @@ const AppNavigator = () => {
       <Stack.Screen name="AmbientesScreen" component={AmbientesScreen} options={{ headerShown: false }} />
       <Stack.Screen name="RiegoManual" component={RiegoManualScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Notificaciones" component={NotificacionesScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="garden" component={Garden} options={{ headerShown: false }} /> 
     </Stack.Navigator>
   );
 };

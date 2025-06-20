@@ -7,12 +7,18 @@ import { db } from '../../firebase/firebase';
 import Header from '../components/Header';
 import Menu from '../components/Menu';
 import AñadirEspacio from '../components/AñadirEspacio';
+import { useNavigation } from '@react-navigation/native';
+
 
 const MisPlantasScreen = () => {
   const [espacios, setEspacios] = useState([]);
   const [mostrarModal, setMostrarModal] = useState(false);
   const [modalAccionesVisible, setModalAccionesVisible] = useState(false);
   const [espacioSeleccionado, setEspacioSeleccionado] = useState(null);
+  const [mostrarModalEditar, setMostrarModalEditar] = useState(false);
+  const [cantidadPlantas, setCantidadPlantas] = useState({});
+
+
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'ambientes'), snapshot => {
@@ -62,14 +68,22 @@ const MisPlantasScreen = () => {
       />
       <View style={styles.cardInfo}>
         <Text style={styles.cardTitle}>{item.tipo}</Text>
-        <Text style={styles.cardSub}>0 Plantas</Text>
-        <TouchableOpacity style={styles.btnAgregarPlanta}>
+        <Text style={styles.cardSub}>{item.sububicacion} • {item.luz}</Text>
+        <Text style={styles.cardSub}>
+          {cantidadPlantas[espacioSeleccionado?.id] || 0} Plantas
+        </Text>
+
+        <TouchableOpacity
+          style={styles.btnAgregarPlanta}
+          onPress={() => navigation.navigate('garden')}
+        >
           <Ionicons name="leaf-outline" size={16} color="#fff" />
           <Text style={styles.textoAgregar}>Añadir planta</Text>
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
+  const navigation = useNavigation();
 
   return (
     <View style={styles.container}>
@@ -110,7 +124,14 @@ const MisPlantasScreen = () => {
           />
         )}
 
-      {/* Modal acciones */}
+
+      {mostrarModalEditar && espacioSeleccionado && (
+        <EditarEspacio
+          espacio={espacioSeleccionado}
+          onClose={() => setMostrarModalEditar(false)}
+        />
+      )}
+
       <Modal
         visible={modalAccionesVisible}
         transparent
@@ -120,9 +141,14 @@ const MisPlantasScreen = () => {
         <View style={styles.modalFondo}>
           <View style={styles.modalContenido}>
             <Text style={styles.modalTitulo}>{espacioSeleccionado?.tipo}</Text>
-            <Text style={styles.modalSubtitulo}>0 Plantas</Text>
+            <Text style={styles.cardSub}>
+              {cantidadPlantas[espacioSeleccionado?.id] || 0} Plantas
+            </Text>
 
-            <TouchableOpacity style={styles.btnModalEditar}>
+            <TouchableOpacity style={styles.btnModalEditar} onPress={() => {
+              setModalAccionesVisible(false);
+              setMostrarModalEditar(true);
+            }}>
               <Ionicons name="create-outline" size={18} color="#fff" />
               <Text style={styles.textoModal}>Editar espacio</Text>
             </TouchableOpacity>
@@ -266,10 +292,16 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContenido: {
-    backgroundColor: '#fff',
-    padding: 20,
+    backgroundColor: '#ffffff',
+    padding: 24,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 8,
+    alignItems: 'center',
   },
   modalTitulo: {
     fontSize: 18,
@@ -282,7 +314,7 @@ const styles = StyleSheet.create({
   },
   btnModalEditar: {
     flexDirection: 'row',
-    backgroundColor: '#2196F3',
+    backgroundColor: '#4CAF50',
     padding: 10,
     borderRadius: 8,
     marginBottom: 10,
