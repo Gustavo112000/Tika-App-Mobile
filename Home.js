@@ -7,9 +7,7 @@ import AppNavigator from './src/navigation/AppNavigator'; // Ajusta esta ruta se
 const AmbientesScreen = () => {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <NavigationContainer>
-        <AppNavigator />
-      </NavigationContainer>
+      <AppNavigator />
     </GestureHandlerRootView>
   );
 };

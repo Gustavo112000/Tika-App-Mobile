@@ -61,7 +61,7 @@ export default function LoginScreen({ navigation }) {
 		const id = await iniciarSesion(email, pass);
 		const token = await AsyncStorage.getItem('token');
 		console.log('Después de iniciarSesion:', id);
-		navigation.navigate('AmbientesScreen'); // o a donde quieras dirigirlo
+		navigation.navigate('Home'); // o a donde quieras dirigirlo
 	    } catch (error) {
 		Alert.alert('Error', error.message);
 	    }
