@@ -13,6 +13,7 @@ import Menu from '../components/Menu';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase/firebase';
 import { getID } from '../../pseudobackend/auth/getIDauth';
+import { obtenerPlantasDeAmbiente } from '../../pseudobackend/auth/getPlantas';
 
 const HumedadScreen = () => {
   const [ambientes, setAmbientes] = useState([]);
@@ -21,7 +22,14 @@ const HumedadScreen = () => {
   const [ambienteActual, setAmbienteActual] = useState(null);
 
   useEffect(() => {
+    const interval = setInterval(() => {
+      cargarAmbientes();
+    }, 2000);
+
+    // Cargar inicialmente
     cargarAmbientes();
+
+    return () => clearInterval(interval);
   }, []);
 
   const cargarAmbientes = async () => {
@@ -34,33 +42,16 @@ const HumedadScreen = () => {
 
       for (const docAmbiente of ambientesSnap.docs) {
         const ambienteId = docAmbiente.id;
-        const plantasRef = collection(db, `usuarios/${idUsuario}/ambientes/${ambienteId}/plantas`);
-        const plantasSnap = await getDocs(plantasRef);
+        const plantas = await obtenerPlantasDeAmbiente(ambienteId);
 
-        let humedadTotal = 0;
-        let plantasArray = [];
-
-        plantasSnap.forEach(doc => {
-          const data = doc.data();
-          const humedad = data.humedad || 0;
-          humedadTotal += humedad;
-
-          plantasArray.push({
-            nombre: data.nombre,
-            cientifico: data.nombre_cientifico,
-            humedad,
-            foto: data.foto_url,
-          });
-        });
-
-        const humedadPromedio = plantasSnap.size > 0 ? Math.round(humedadTotal / plantasSnap.size) : 0;
+        const humedad = plantas.length > 0 ? plantas[0].humedad_actual || 0 : 0;
 
         datos.push({
           id: ambienteId,
           nombre: ambienteId,
-          plantas: plantasSnap.size,
-          humedad: humedadPromedio,
-          plantasDetalle: plantasArray,
+          plantas: plantas.length,
+          humedad,
+          plantasDetalle: plantas,
         });
       }
 
@@ -107,7 +98,6 @@ const HumedadScreen = () => {
         ))}
       </ScrollView>
 
-      {/* Modal */}
       <Modal visible={modalVisible} animationType="slide" transparent>
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
@@ -121,15 +111,15 @@ const HumedadScreen = () => {
               {plantas.map((planta, index) => (
                 <View key={index} style={styles.plantaCard}>
                   <Image
-                    source={{ uri: planta.foto || 'https://via.placeholder.com/100' }}
+                    source={{ uri: planta.foto_url || 'https://via.placeholder.com/100' }}
                     style={styles.plantaImagen}
                   />
                   <Text style={styles.plantaNombre}>{planta.nombre}</Text>
-                  <Text style={styles.plantaSub}>{planta.cientifico}</Text>
-                  <Image source={obtenerIcono(planta.humedad)} style={{ width: 20, height: 20, marginTop: 4 }} />
+                  <Text style={styles.plantaSub}>{planta.nombre_cientifico}</Text>
+                  <Image source={obtenerIcono(planta.humedad_actual)} style={{ width: 20, height: 20, marginTop: 4 }} />
                   <Text style={styles.plantaHumedad}>
-                    Humedad: {planta.humedad}%{"\n"}
-                    {obtenerEtiqueta(planta.humedad)}
+                    Humedad: {planta.humedad_actual}%{"\n"}
+                    {obtenerEtiqueta(planta.humedad_actual)}
                   </Text>
                 </View>
               ))}
