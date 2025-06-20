@@ -1,35 +1,57 @@
-import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import AddPlantCard from '../components/add-plant-card';
+import React, { useEffect, useState } from 'react';
+import { View, StyleSheet, FlatList } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { collection, onSnapshot } from 'firebase/firestore';
+
+import { db } from '../firebase/firebase';
+import AddPlantCard from '../components/add-plant-card';
+import PlantCard from '../components/plant-card';
 import Header from '../src/components/Header';
 import Menu from '../src/components/Menu';
 
-
-export default function Garden() {
+const Garden = () => {
   const navigation = useNavigation();
+  const [plantas, setPlantas] = useState([]);
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, 'plantas'), (snapshot) => {
+      const datos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setPlantas(datos);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   return (
     <View style={styles.container}>
-      <Header title="Mis Plantas" />
-      <AddPlantCard onPress={() => navigation.navigate('AllPlants')} />
-      {/* Aquí puedes seguir renderizando PlantCards o lo que tengas */}
+      <Header title="Mi jardín" />
+
+      <FlatList
+        data={plantas}
+        keyExtractor={(item) => item.id}
+        ListHeaderComponent={
+          <AddPlantCard onPress={() => navigation.navigate('plants')} />
+        }
+        renderItem={({ item }) => (
+          <PlantCard planta={item} />
+        )}
+        contentContainerStyle={styles.lista}
+      />
+
       <Menu />
     </View>
   );
-}
+};
+
+export default Garden;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    margin: 20,
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
   },
-  content: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
+  lista: {
+    paddingHorizontal: 16,
+    paddingBottom: 120, // espacio para que el menú no tape las tarjetas
   },
 });

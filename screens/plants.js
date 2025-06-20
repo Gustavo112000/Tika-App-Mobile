@@ -17,6 +17,8 @@ import PlantCard from '../components/plant-card';
 import { useNavigation } from '@react-navigation/native';
 import { AntDesign } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import Header from '../src/components/Header';
+import Menu from '../src/components/Menu';
 
 export default function AllPlantsScreen() {
   const [plants, setPlants] = useState([]);
@@ -80,12 +82,7 @@ export default function AllPlantsScreen() {
       Alert.alert(
         '¡Éxito!',
         `${nombrePersonalizado || selectedPlant.nombre} ha sido añadida a tu jardín.`,
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.navigate('Garden'),
-          },
-        ],
+        [{ text: 'OK', onPress: () => navigation.navigate('Garden') }],
         { cancelable: false }
       );
     } catch (error) {
@@ -96,6 +93,8 @@ export default function AllPlantsScreen() {
 
   return (
     <View style={styles.container}>
+      <Header title="Todas las Plantas" />
+
       {plants.length === 0 ? (
         <Text style={styles.emptyText}>No hay plantas registradas aún.</Text>
       ) : (
@@ -122,18 +121,10 @@ export default function AllPlantsScreen() {
         animationType="slide"
         onRequestClose={() => setBottomSheetVisible(false)}
       >
-        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <View style={styles.modalOverlay}>
           <Pressable style={{ flex: 1 }} onPress={() => setBottomSheetVisible(false)} />
-          <View style={{
-            backgroundColor: '#fff',
-            borderTopLeftRadius: 20,
-            borderTopRightRadius: 20,
-            padding: 20,
-          }}>
-            <Pressable
-              style={{ position: 'absolute', top: 10, right: 20 }}
-              onPress={() => setBottomSheetVisible(false)}
-            >
+          <View style={styles.modalContent}>
+            <Pressable style={styles.closeButton} onPress={() => setBottomSheetVisible(false)}>
               <AntDesign name="closecircle" size={24} color="gray" />
             </Pressable>
 
@@ -192,15 +183,15 @@ export default function AllPlantsScreen() {
               style={inputStyle}
             />
 
-            <TouchableOpacity
-              style={styles.button}
-              onPress={handleAddToGarden}
-            >
+            <TouchableOpacity style={styles.button} onPress={handleAddToGarden}>
               <Text style={styles.buttonText}>Añadir planta</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
+      <View style={styles.menuContainer}>
+        <Menu />
+      </View>
     </View>
   );
 }
@@ -217,11 +208,13 @@ const inputStyle = {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f2f2f2',
-    paddingTop: 20,
+    backgroundColor: '#ffff',
+    paddingTop: 10,
+    paddingBottom: 80, // Espacio para el menú inferior
   },
   list: {
     paddingHorizontal: 10,
+    paddingBottom: 20,
   },
   emptyText: {
     textAlign: 'center',
@@ -246,4 +239,26 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: 'bold',
   },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 10,
+    right: 20,
+  },
+  menuContainer: {
+    position: 'absolute',
+    bottom: 0,
+    width: '100%',
+  },
+
 });
