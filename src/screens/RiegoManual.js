@@ -60,7 +60,7 @@ useEffect(() => {
     } catch (error) {
       console.error("❌ Error al actualizar humedades:", error.message);
     }
-  }, 120000); // 2 minutos
+  }, 1000); // 4 minutos
 
   return () => clearInterval(intervalo); // limpieza
 }, []);
@@ -102,7 +102,7 @@ useEffect(() => {
     } catch (error) {
       console.error("❌ Error en el riego automático:", error.message);
     }
-  }, 120000); // cada 2 minutos
+  }, 100); // cada 2 minutos
 
   return () => clearInterval(intervaloRiegoAuto);
 }, [estadoAuto]);
@@ -258,7 +258,7 @@ const registrarRiegoEnFirebase = async (ambienteId, metodo = 'Manual') => {
         );
         console.log(`🌡 Humedad de ${plantaId} reducida a 40% después de 2 minutos`);
       }
-    }, 120000); // 2 minutos
+    }, 10000); // 2 minutos
 
   } catch (error) {
     console.error('❌ Error al registrar riego:', error.message);
@@ -419,7 +419,7 @@ const registrarRiegoEnFirebase = async (ambienteId, metodo = 'Manual') => {
     }
 
     console.log(`🌧 Riego automático completado y humedad actualizada en ambiente ${id}`);
-  }, 3000);
+  }, 100);
 
 };
 
@@ -445,7 +445,7 @@ const registrarRiegoEnFirebase = async (ambienteId, metodo = 'Manual') => {
           r.id === id ? { ...r, estado: 'inactivo' } : r
         )
       );
-    }, 120000); // 2 minutos en milisegundos
+    }, 40000); // 2 minutos en milisegundos
   }, 3000);
 };
 
